@@ -1,0 +1,91 @@
+---
+title: "Fluxes_Determination"
+author: "Guille"
+date: "2025-01-27"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r cars}
+summary(cars)
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
+```{r message=FALSE}
+library(tidyverse)
+```
+
+# Tests to create a function for determining gas fluxes measured in a chamber
+
+## Example for an IRGA_EGM-5 and a CPY/SRC chamber
+
+Import and Clean your data (Note this may be different for each gas analyzer used, the measurement mode used and the measure format setting) (This example was done with IRGA EGM-5 in CPY Mode)
+
+```{r include=FALSE}
+Data_file_23042017 <- read_csv('C:\\Users\\guill\\OneDrive\\Documentos\\R\\Datos_FP\\23042017.TXT', skip = 2, col_names = FALSE, comment= 'Start')
+str(Data_file_23042017)
+###Remove rows with "End"
+Data_file_23042017 <- Data_file_23042017 %>% filter(X1 != "End" | X1 != "Zero")
+###Select just rows with M5
+Data_file_23042017 <- Data_file_23042017 %>% filter(X1 == "M5")
+str(Data_file_23042017)
+###Select just column with relevant information
+###When the files is generated from a SRC process, then parameter 3 (column 20) is DT
+Data_file_23042017 <- Data_file_23042017[,c(1:8,16,20)]
+###Change column names
+colnames(Data_file_23042017) <- c('Device',"Date",'Hour','Plot','Record_number','CO2_ppm','P_mBa','Flow',"T_aire", "DT")
+###remove row with NAs
+Data_file_23042017 <- drop_na(Data_file_23042017, Plot)
+str(Data_file_23042017)
+#Give Date format to Date column
+Data_file_23042017$Date <- as.Date(Data_file_23042017$Date, format = "%d/%m/%Y")
+```
+
+I create an object with the area and volumen of the chamber used
+
+```{r message=FALSE}
+Area_CPY_m2 <- 0.0167
+ Volumen_CPY_m3 <- 0.002427524351
+```
+
+I check the plots (If the fluxes measured were reasonable)
+```{r echo=FALSE}
+ggplot(Data_file_23042017, aes(x = DT, y = CO2_ppm))+ geom_point()+ facet_wrap(~Plot, scales = 'free')
+```
+
+As can be seen, the IRGA in some plots adds many points that rise or fall quickly toward the end. Therefore, we will filter up to the measurement time defined when setting up the respiration chambers (in this case, 180).
+
+Since the measurement time is not included in the data provided by the IRGA, we created a new variable with the difference in the record number (which we can use for filtering the plot time)
+
+```{r message=FALSE}
+Data_file_23042017 <- Data_file_23042017 %>% group_by(Plot) %>% mutate(Seconds = Record_number-first(Record_number))
+
+Reduced_time_data_23042017 <- Data_file_23042017 %>% filter(Seconds <= 180)
+```
+
+We can now appreciate the final plots (with the exact time used in our measurements)
+
+```{r echo=FALSE}
+ggplot(Reduced_time_data_23042017, aes(x = DT, y = CO2_ppm))+
+  geom_point()+
+  facet_wrap(~Plot, scales = 'free')
+```
+
