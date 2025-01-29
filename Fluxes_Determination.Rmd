@@ -63,7 +63,7 @@ I create an object with the area and volumen of the chamber used
 
 ```{r message=FALSE}
 Area_CPY_m2 <- 0.0167
- Volumen_CPY_m3 <- 0.002427524351
+Volumen_CPY_m3 <- 0.002427524351
 ```
 
 I check the plots (If the fluxes measured were reasonable)
@@ -71,9 +71,9 @@ I check the plots (If the fluxes measured were reasonable)
 ggplot(Data_file_23042017, aes(x = DT, y = CO2_ppm))+ geom_point()+ facet_wrap(~Plot, scales = 'free')
 ```
 
-As can be seen, the IRGA in some plots adds many points that rise or fall quickly toward the end. Therefore, we will filter up to the measurement time defined when setting up the respiration chambers (in this case, 180).
+As can be seen, the IRGA in some plots adds many points that rise or fall quickly toward the end. Therefore, we will filter up to the measurement time defined when setting up the respiration chambers (in this case, 180 seconds).
 
-Since the measurement time is not included in the data provided by the IRGA, we created a new variable with the difference in the record number (which we can use for filtering the plot time)
+Since the measurement time is not included in the data provided by the IRGA, we create a new variable with the difference in the record number (which we can use for filtering the plot time)
 
 ```{r message=FALSE}
 Data_file_23042017 <- Data_file_23042017 %>% group_by(Plot) %>% mutate(Seconds = Record_number-first(Record_number))
