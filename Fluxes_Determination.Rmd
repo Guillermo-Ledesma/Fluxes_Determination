@@ -1,5 +1,5 @@
 ---
-title: "Fluxes_Determination"
+title: "Fluxes Determination"
 author: "Guille"
 date: "2025-01-27"
 output: html_document
@@ -7,16 +7,7 @@ output: html_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
-```
 
-## R Markdown
-
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
-
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
-
-```{r cars}
-summary(cars)
 ```
 
 ## Including Plots
@@ -29,7 +20,7 @@ plot(pressure)
 
 Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
 
-```{r message=FALSE}
+```{r load_packages, message=FALSE}
 library(tidyverse)
 ```
 
@@ -37,55 +28,113 @@ library(tidyverse)
 
 ## Example for an IRGA_EGM-5 and a CPY/SRC chamber
 
-Import and Clean your data (Note this may be different for each gas analyzer used, the measurement mode used and the measure format setting) (This example was done with IRGA EGM-5 in CPY Mode)
+### Import and Clean your data (Note this may be different for each gas analyzer used, the measurement mode used and the measure format setting) (This example was done with IRGA EGM-5 in CPY Mode)
 
-```{r include=FALSE}
+```{r load_data, results = "hide", message = FALSE, warning=FALSE, echo=TRUE}
 Data_file_23042017 <- read_csv('C:\\Users\\guill\\OneDrive\\Documentos\\R\\Datos_FP\\23042017.TXT', skip = 2, col_names = FALSE, comment= 'Start')
 str(Data_file_23042017)
-###Remove rows with "End"
+
+```
+
+Remove rows with 'End' and 'Zero' (it does not contain data) or select just rows with M5
+
+```{r clean_data1, message = FALSE, warning=FALSE, echo=TRUE}
+
 Data_file_23042017 <- Data_file_23042017 %>% filter(X1 != "End" | X1 != "Zero")
-###Select just rows with M5
 Data_file_23042017 <- Data_file_23042017 %>% filter(X1 == "M5")
-str(Data_file_23042017)
-###Select just column with relevant information
-###When the files is generated from a SRC process, then parameter 3 (column 20) is DT
-Data_file_23042017 <- Data_file_23042017[,c(1:8,16,20)]
-###Change column names
-colnames(Data_file_23042017) <- c('Device',"Date",'Hour','Plot','Record_number','CO2_ppm','P_mBa','Flow',"T_aire", "DT")
-###remove row with NAs
+```
+
+Select just column with relevant information (necessary to calculate fluxes) When the file is generated from a SRC process, then parameter 3 (column 20) is DT
+
+```{r  clean_data2, message = FALSE, warning=FALSE, echo=TRUE}
+
+Data_file_23042017 <- Data_file_23042017[,c(2:8,16,20)]
+```
+
+Change column names
+
+```{r clean_data3, message = FALSE, warning=FALSE, echo=TRUE}
+colnames(Data_file_23042017) <- c("Date",'Hour','Plot','Record_number','CO2_ppm','P_mBa','Flow',"T_aire", "DT")
+```
+
+Remove rows with NAs
+
+```{r clean_data4, results = "hide", message = FALSE, warning=FALSE, echo=TRUE}
 Data_file_23042017 <- drop_na(Data_file_23042017, Plot)
-str(Data_file_23042017)
-#Give Date format to Date column
+```
+
+Give Date format to Date column
+
+```{r clean_data5, results = "hide", message = FALSE, warning=FALSE, echo=TRUE}
 Data_file_23042017$Date <- as.Date(Data_file_23042017$Date, format = "%d/%m/%Y")
 ```
 
-I create an object with the area and volumen of the chamber used
+### I create an object with the area and volumen of the chamber used
 
-```{r message=FALSE}
+```{r chamber_size, message=FALSE}
 Area_CPY_m2 <- 0.0167
 Volumen_CPY_m3 <- 0.002427524351
 ```
 
-I check the plots (If the fluxes measured were reasonable)
-```{r echo=FALSE}
+### I check the plots (If the fluxes measured were reasonable)
+
+```{r visualization1, echo=FALSE}
 ggplot(Data_file_23042017, aes(x = DT, y = CO2_ppm))+ geom_point()+ facet_wrap(~Plot, scales = 'free')
 ```
 
-As can be seen, the IRGA in some plots adds many points that rise or fall quickly toward the end. Therefore, we will filter up to the measurement time defined when setting up the respiration chambers (in this case, 180 seconds).
+### As can be seen, the IRGA in some plots adds many points that rise or fall quickly toward the end. Therefore, we will filter up to the measurement time defined when setting up the respiration chambers (in this case, 180 seconds).
 
-Since the measurement time is not included in the data provided by the IRGA, we create a new variable with the difference in the record number (which we can use for filtering the plot time)
+### Since the measurement time is not included in the data provided by the IRGA, we create a new variable with the difference in the record number (which we can use for filtering the plot time)
 
-```{r message=FALSE}
+```{r time_measured, message=FALSE}
 Data_file_23042017 <- Data_file_23042017 %>% group_by(Plot) %>% mutate(Seconds = Record_number-first(Record_number))
 
 Reduced_time_data_23042017 <- Data_file_23042017 %>% filter(Seconds <= 180)
 ```
 
-We can now appreciate the final plots (with the exact time used in our measurements)
+### We can now appreciate the final plots (with the exact time used in our measurements)
 
-```{r echo=FALSE}
+```{r visualization2, echo=FALSE}
 ggplot(Reduced_time_data_23042017, aes(x = DT, y = CO2_ppm))+
   geom_point()+
   facet_wrap(~Plot, scales = 'free')
 ```
 
+### Create a function to obtain the slope, the R-squared and the confidence interval
+
+```{r regression_function, message=FALSE}
+fit_rates <- function(data){
+  lm <- lm(CO2_ppm~Seconds, data = data)
+  cor <- cor.test(formula = ~Seconds +CO2_ppm, data = data)
+  ajustes <- data.frame(R2 = as.numeric(cor$estimate^2), pvalue = cor$p.value, slope = as.numeric(lm$coefficients[2]), Intercept = as.numeric(lm$coefficients[1]), n = nrow(data), Conf_2.5 = confint(lm)[2,1], Conf_97.5 = confint(lm)[2,2])
+  return(ajustes)
+}
+```
+
+### Apply the function to our data
+
+```{r apply_function, results= "hide", message=FALSE}
+Results_23042017 <- Reduced_time_data_23042017 %>% group_by(Plot) %>% group_modify(~fit_rates(data=.x))
+str(Results_23042017)
+```
+
+### Check the plots with the fitted regression
+
+```{r regression_visualization, echo=FALSE}
+ggplot(Reduced_time_data_23042017, aes(x = DT, y = CO2_ppm))+
+  geom_point()+
+  facet_wrap(~Plot, scales = 'free')+
+  geom_abline(data = Results_23042017, aes(intercept = Intercept, slope = slope), color = "red")+
+  geom_text(data = Results_23042017, aes(x= 25, y = 408, label = paste("R2 =", round(R2, 2))), size = 3)+
+  geom_label(data = Results_23042017, aes(x =25, y= 415, label = paste("Slp=", round(slope, 4))), size =3)
+```
+
+### Calculate the fluxes from the fitted slope, as well as the various parameters required for their calculation
+
+# **ESTO ES LO QUE QUERRIA FUNCIONALIZAR EN PRINCIPIO**
+
+First, we calculate the moles of air in the chamber based on the atmospheric pressure (mb), the chamber volume (cm³), and the air temperature (°C):
+
+```{r moles of air, message=FALSE}
+n_aire_23042017 <- ((mean(Data_file_23042017$P_mBa)/1013) * Volumen_CPY_m3) / (8.205746e-5 * (mean(Data_file_23042017$T_aire + 273)))
+```
