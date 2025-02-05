@@ -131,11 +131,9 @@ ggplot(Reduced_time_data_23042017, aes(x = DT, y = CO2_ppm))+
 
 ### Calculate the fluxes from the fitted slope, as well as the various parameters required for their calculation
 
-# **ESTO ES LO QUE QUERRIA FUNCIONALIZAR EN PRINCIPIO**
+First, we calculate the moles of air in the chamber based on the atmospheric pressure (mBa), the chamber volume (cm³), and the air temperature (°C). With the moles of air and the slope of the regression, we calculate the moles of CO2 per second and dividing it by the area of the chamber, the moles of CO₂ per secod:
 
-First, we calculate the moles of air in the chamber based on the atmospheric pressure (mb), the chamber volume (cm³), and the air temperature (°C). With the moles of air and the slope of the regression, we calculate the moles of CO2 per second and dividing it by the area of the chamber, the moles of CO₂ per second.:
-
-```{r flux_calculation, message=FALSE}
+```{r flux_calculation_function, message=FALSE}
 CO2_FluxFun <- function(data, pressure_mBa, temp_C, slope_values, volumen_m3, area_m2) {
   n_aire <- ((mean(data[[pressure_mBa]]) / 1013) * volumen_m3) / 
     (8.205746e-5 * (mean(data[[temp_C]]) + 273))
@@ -145,7 +143,9 @@ CO2_FluxFun <- function(data, pressure_mBa, temp_C, slope_values, volumen_m3, ar
   
   return(umolCO2_s_m2)
 }
+```
 
+```{r flux_calculation, message=FALSE}
 CO2_Flux <- CO2_FluxFun(
   data = Data_file_23042017, 
   pressure_mBa = "P_mBa", 
@@ -155,9 +155,12 @@ CO2_Flux <- CO2_FluxFun(
   area_m2 = Area_CPY_m2
 )
 CO2_Flux
+```
 
+```{r comprobation, message=FALSE}
 n_aire_23042017 <- ((mean(Data_file_23042017$P_mBa)/1013) * Volumen_CPY_m3) / (8.205746e-5 * (mean(Data_file_23042017$T_aire + 273)))
 umolCO2_s_23042017 <- (Results_23042017$slope * n_aire_23042017)
 umolCO2_s_m2_23042019 <- (umolCO2_s_23042017/Area_CPY_m2)
 umolCO2_s_m2_23042019
 ```
+

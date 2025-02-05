@@ -443,17 +443,11 @@ str(Results_23042017)</code></pre>
 <div id="calculate-the-fluxes-from-the-fitted-slope-as-well-as-the-various-parameters-required-for-their-calculation" class="section level3">
 <h3>Calculate the fluxes from the fitted slope, as well as the various
 parameters required for their calculation</h3>
-</div>
-</div>
-</div>
-<div id="esto-es-lo-que-querria-funcionalizar-en-principio" class="section level1">
-<h1><strong>ESTO ES LO QUE QUERRIA FUNCIONALIZAR EN
-PRINCIPIO</strong></h1>
 <p>First, we calculate the moles of air in the chamber based on the
-atmospheric pressure (mb), the chamber volume (cm³), and the air
+atmospheric pressure (mBa), the chamber volume (cm³), and the air
 temperature (°C). With the moles of air and the slope of the regression,
 we calculate the moles of CO2 per second and dividing it by the area of
-the chamber, the moles of CO₂ per second.:</p>
+the chamber, the moles of CO₂ per secod:</p>
 <pre class="r"><code>CO2_FluxFun &lt;- function(data, pressure_mBa, temp_C, slope_values, volumen_m3, area_m2) {
   n_aire &lt;- ((mean(data[[pressure_mBa]]) / 1013) * volumen_m3) / 
     (8.205746e-5 * (mean(data[[temp_C]]) + 273))
@@ -462,9 +456,8 @@ the chamber, the moles of CO₂ per second.:</p>
   umolCO2_s_m2 &lt;- umolCO2_s / area_m2
   
   return(umolCO2_s_m2)
-}
-
-CO2_Flux &lt;- CO2_FluxFun(
+}</code></pre>
+<pre class="r"><code>CO2_Flux &lt;- CO2_FluxFun(
   data = Data_file_23042017, 
   pressure_mBa = &quot;P_mBa&quot;, 
   temp_C = &quot;T_aire&quot;, 
@@ -472,11 +465,15 @@ CO2_Flux &lt;- CO2_FluxFun(
   volumen_m3 = Volumen_CPY_m3, 
   area_m2 = Area_CPY_m2
 )
-
-
-n_aire_23042017 &lt;- ((mean(Data_file_23042017$P_mBa)/1013) * Volumen_CPY_m3) / (8.205746e-5 * (mean(Data_file_23042017$T_aire + 273)))
+CO2_Flux</code></pre>
+<pre><code>## [1] -0.3948565  0.2105641 -0.5192864  0.1742688  0.2816126  0.0922468</code></pre>
+<pre class="r"><code>n_aire_23042017 &lt;- ((mean(Data_file_23042017$P_mBa)/1013) * Volumen_CPY_m3) / (8.205746e-5 * (mean(Data_file_23042017$T_aire + 273)))
 umolCO2_s_23042017 &lt;- (Results_23042017$slope * n_aire_23042017)
-umolCO2_s_m2_23042019 &lt;- (umolCO2_s_23042017/Area_CPY_m2)</code></pre>
+umolCO2_s_m2_23042019 &lt;- (umolCO2_s_23042017/Area_CPY_m2)
+umolCO2_s_m2_23042019</code></pre>
+<pre><code>## [1] -0.3948565  0.2105641 -0.5192864  0.1742688  0.2816126  0.0922468</code></pre>
+</div>
+</div>
 </div>
 
 
